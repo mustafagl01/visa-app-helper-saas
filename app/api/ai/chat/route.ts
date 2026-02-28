@@ -1,62 +1,72 @@
 import { createClient } from '@/lib/supabase/server'
-import { anthropic } from '@/lib/anthropic/client'
-import { VISA_ADVISOR_SYSTEM_PROMPT, VISA_ADVISOR_TOOLS } from '@/lib/anthropic/prompts/visa-advisor'
+import { geminiProModel } from '@/lib/gemini/client'
+import { VISA_ADVISOR_SYSTEM_PROMPT } from '@/lib/gemini/prompts/visa-advisor'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
 
-  const { caseId, message, history = [] } = await req.json()
+    // Demo mode: skip auth check if no user
+    const userId = user?.id || 'demo-user'
 
-  await supabase.from('chat_messages').insert({ case_id: caseId, role: 'user', content: message })
+    const { caseId, message, history = [] } = await req.json()
 
-  const { data: caseData } = await supabase
-    .from('cases').select('case_profile').eq('id', caseId).single()
+    // Save user message
+    if (caseId) {
+      await supabase.from('chat_messages').insert({
+        case_id: caseId,
+        role: 'user',
+        content: message
+      })
+    }
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 1024,
-    system: VISA_ADVISOR_SYSTEM_PROMPT,
-    tools: VISA_ADVISOR_TOOLS as any,
-    messages: [
-      ...history.map((m: any) => ({ role: m.role, content: m.content })),
-      { role: 'user', content: message }
-    ]
-  })
+    // Build chat history for Gemini
+    const chatHistory = history.map((m: any) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }]
+    }))
 
-  let profileUpdates: Record<string, any> = {}
-  let visaTypeSet: any = null
+    const chat = geminiProModel.startChat({
+      history: [
+        { role: 'user', parts: [{ text: VISA_ADVISOR_SYSTEM_PROMPT }] },
+        { role: 'model', parts: [{ text: 'Understood. I am VisaFlow AI, ready to help with UK visa applications.' }] },
+        ...chatHistory
+      ]
+    })
 
-  for (const block of response.content) {
-    if (block.type === 'tool_use') {
-      if (block.name === 'update_case_profile') {
-        profileUpdates = { ...profileUpdates, ...(block.input as any).updates }
-      }
-      if (block.name === 'set_visa_type') {
-        visaTypeSet = block.input
+    const result = await chat.sendMessage(message)
+    const assistantMessage = result.response.text()
+
+    // Detect visa type from response
+    let visaTypeSet = null
+    const visaTypeMatch = assistantMessage.match(/VISA_TYPE:\s*([\w-]+)/)
+    if (visaTypeMatch && caseId) {
+      const slug = visaTypeMatch[1]
+      const { data: vt } = await supabase
+        .from('visa_types').select('id').eq('slug', slug).single()
+      if (vt) {
+        await supabase.from('cases').update({
+          visa_type_id: vt.id,
+          status: 'documents'
+        }).eq('id', caseId)
+        visaTypeSet = { visa_type_slug: slug }
       }
     }
-  }
 
-  if (Object.keys(profileUpdates).length > 0) {
-    const merged = { ...(caseData?.case_profile || {}), ...profileUpdates }
-    await supabase.from('cases').update({ case_profile: merged }).eq('id', caseId)
-  }
-
-  if (visaTypeSet) {
-    const { data: vt } = await supabase
-      .from('visa_types').select('id').eq('slug', visaTypeSet.visa_type_slug).single()
-    if (vt) {
-      await supabase.from('cases').update({ visa_type_id: vt.id, status: 'documents' }).eq('id', caseId)
+    // Save assistant message
+    if (caseId) {
+      await supabase.from('chat_messages').insert({
+        case_id: caseId,
+        role: 'assistant',
+        content: assistantMessage
+      })
     }
+
+    return NextResponse.json({ message: assistantMessage, visaTypeSet })
+  } catch (error: any) {
+    console.error('Chat error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
-  const textContent = response.content.find((b: any) => b.type === 'text')
-  const assistantMessage = (textContent as any)?.text || ''
-
-  await supabase.from('chat_messages').insert({ case_id: caseId, role: 'assistant', content: assistantMessage })
-
-  return NextResponse.json({ message: assistantMessage, visaTypeSet, profileUpdates })
 }

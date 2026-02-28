@@ -1,34 +1,42 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function GET() {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id || 'demo-user'
 
-  const { visaTypeId } = await req.json()
+    const { data, error } = await supabase
+      .from('cases')
+      .select('*, visa_types(name, country)')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
 
-  const { data, error } = await supabase
-    .from('cases')
-    .insert({ user_id: user.id, visa_type_id: visaTypeId || null, status: 'intake' })
-    .select()
-    .single()
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ case: data })
+    if (error) throw error
+    return NextResponse.json({ cases: data || [] })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }
 
-export async function GET() {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export async function POST(req: Request) {
+  try {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const userId = user?.id || 'demo-user'
 
-  const { data, error } = await supabase
-    .from('cases')
-    .select('*, visa_types(name, slug, countries(name, flag_emoji))')
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
+    const body = await req.json()
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ cases: data })
+    const { data, error } = await supabase
+      .from('cases')
+      .insert({ user_id: userId, title: body.title || 'Yeni Başvuru', status: 'chat', case_profile: {} })
+      .select()
+      .single()
+
+    if (error) throw error
+    return NextResponse.json({ case: data })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }

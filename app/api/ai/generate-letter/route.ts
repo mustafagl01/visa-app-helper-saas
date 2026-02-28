@@ -1,40 +1,38 @@
 import { createClient } from '@/lib/supabase/server'
-import { anthropic } from '@/lib/anthropic/client'
-import { buildLetterPrompt } from '@/lib/anthropic/prompts/letter-generator'
+import { geminiProModel } from '@/lib/gemini/client'
+import { LETTER_GENERATOR_SYSTEM_PROMPT } from '@/lib/gemini/prompts/visa-advisor'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  try {
+    const supabase = createClient()
+    const { caseId, letterType = 'cover' } = await req.json()
 
-  const { caseId, letterType } = await req.json()
+    const { data: caseData } = await supabase
+      .from('cases')
+      .select('*, visa_types(name, requirements)')
+      .eq('id', caseId)
+      .single()
 
-  const { data: caseData } = await supabase
-    .from('cases').select('case_profile').eq('id', caseId).single()
+    if (!caseData) {
+      return NextResponse.json({ error: 'Case not found' }, { status: 404 })
+    }
 
-  const profile = caseData?.case_profile || {}
-  const prompt = buildLetterPrompt(letterType, profile, profile.extracted || {})
+    const prompt = `${LETTER_GENERATOR_SYSTEM_PROMPT}\n\nCase Profile:\n${JSON.stringify(caseData.case_profile, null, 2)}\n\nVisa Type: ${caseData.visa_types?.name || 'Unknown'}\nLetter Type: ${letterType}\n\nGenerate the letter now:`
 
-  const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 2000,
-    messages: [{ role: 'user', content: prompt }]
-  })
+    const result = await geminiProModel.generateContent(prompt)
+    const letterContent = result.response.text()
 
-  const letterContent = response.content[0].type === 'text' ? response.content[0].text : ''
+    await supabase.from('generated_letters').upsert({
+      case_id: caseId,
+      letter_type: letterType,
+      content: letterContent,
+      generated_at: new Date().toISOString()
+    })
 
-  const { data: existing } = await supabase
-    .from('generated_letters').select('id')
-    .eq('case_id', caseId).eq('letter_type', letterType).single()
-
-  if (existing) {
-    await supabase.from('generated_letters')
-      .update({ content: letterContent, is_finalized: false, updated_at: new Date().toISOString() })
-      .eq('id', existing.id)
-  } else {
-    await supabase.from('generated_letters').insert({ case_id: caseId, letter_type: letterType, content: letterContent })
+    return NextResponse.json({ letter: letterContent })
+  } catch (error: any) {
+    console.error('Letter generation error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
-
-  return NextResponse.json({ content: letterContent })
 }
