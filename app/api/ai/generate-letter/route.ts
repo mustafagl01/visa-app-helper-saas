@@ -24,6 +24,23 @@ Write a complete, formal letter.`
 
     return NextResponse.json({ letter })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    const errorMessage = error?.message || 'AI service error'
+    const keyIssueDetected =
+      errorMessage.includes('403') ||
+      errorMessage.toLowerCase().includes('api key') ||
+      errorMessage.toLowerCase().includes('forbidden') ||
+      errorMessage.toLowerCase().includes('leaked')
+
+    if (keyIssueDetected) {
+      return NextResponse.json(
+        {
+          letter:
+            'AI mektup servisi şu an kullanılamıyor. Lütfen yönetici tarafında geçerli bir GEMINI_API_KEY tanımlandıktan sonra tekrar deneyin.',
+        },
+        { status: 200 },
+      )
+    }
+
+    return NextResponse.json({ error: 'Mektup üretilirken beklenmeyen bir hata oluştu.' }, { status: 500 })
   }
 }
