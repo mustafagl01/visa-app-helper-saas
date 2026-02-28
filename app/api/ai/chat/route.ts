@@ -16,16 +16,25 @@ export async function POST(req: Request) {
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
 
-    const chatHistory = history.map((m: any) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }))
+    const chatHistory = history
+      .filter((m: any) => typeof m?.content === 'string' && (m.role === 'user' || m.role === 'assistant'))
+      .map((m: any) => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      }))
+
+    // Gemini chat history must start with a user message and alternate roles.
+    const normalizedHistory = chatHistory.filter((item: any, index: number, arr: any[]) => {
+      if (index === 0 && item.role !== 'user') return false
+      if (index > 0 && arr[index - 1]?.role === item.role) return false
+      return true
+    })
 
     const chat = model.startChat({
       history: [
         { role: 'user', parts: [{ text: 'You are VisaFlow AI, a helpful UK visa application assistant. Help users with their visa applications, document requirements, and letter writing.' }] },
         { role: 'model', parts: [{ text: 'I am VisaFlow AI, ready to help with UK visa applications.' }] },
-        ...chatHistory,
+        ...normalizedHistory,
       ],
     })
 
