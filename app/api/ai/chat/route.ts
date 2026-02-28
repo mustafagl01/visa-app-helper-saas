@@ -1,66 +1,59 @@
-import { createClient } from '@/lib/supabase/server'
+import { getDatabase } from '@/lib/db/client'
+import { chat_messages, cases, visa_types } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { geminiProModel } from '@/lib/gemini/client'
 import { VISA_ADVISOR_SYSTEM_PROMPT } from '@/lib/gemini/prompts/visa-advisor'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   try {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-
-    // Demo mode: skip auth check if no user
-    const userId = user?.id || 'demo-user'
-
+    const db = getDatabase()
     const { caseId, message, history = [] } = await req.json()
 
     // Save user message
     if (caseId) {
-      await supabase.from('chat_messages').insert({
+      await db.insert(chat_messages).values({
         case_id: caseId,
         role: 'user',
-        content: message
+        content: message,
       })
     }
 
-    // Build chat history for Gemini
+    // Build Gemini chat history
     const chatHistory = history.map((m: any) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
+      parts: [{ text: m.content }],
     }))
 
     const chat = geminiProModel.startChat({
       history: [
         { role: 'user', parts: [{ text: VISA_ADVISOR_SYSTEM_PROMPT }] },
         { role: 'model', parts: [{ text: 'Understood. I am VisaFlow AI, ready to help with UK visa applications.' }] },
-        ...chatHistory
-      ]
+        ...chatHistory,
+      ],
     })
 
     const result = await chat.sendMessage(message)
     const assistantMessage = result.response.text()
 
-    // Detect visa type from response
+    // Detect visa type
     let visaTypeSet = null
     const visaTypeMatch = assistantMessage.match(/VISA_TYPE:\s*([\w-]+)/)
     if (visaTypeMatch && caseId) {
       const slug = visaTypeMatch[1]
-      const { data: vt } = await supabase
-        .from('visa_types').select('id').eq('slug', slug).single()
-      if (vt) {
-        await supabase.from('cases').update({
-          visa_type_id: vt.id,
-          status: 'documents'
-        }).eq('id', caseId)
+      const vt = await db.select().from(visa_types).where(eq(visa_types.slug, slug)).limit(1)
+      if (vt[0]) {
+        await db.update(cases).set({ visa_type_id: vt[0].id, status: 'documents', updated_at: new Date().toISOString() }).where(eq(cases.id, caseId))
         visaTypeSet = { visa_type_slug: slug }
       }
     }
 
     // Save assistant message
     if (caseId) {
-      await supabase.from('chat_messages').insert({
+      await db.insert(chat_messages).values({
         case_id: caseId,
         role: 'assistant',
-        content: assistantMessage
+        content: assistantMessage,
       })
     }
 

@@ -1,0 +1,16 @@
+name = "visaflow"
+main = ".open-next/worker.js"
+compatibility_date = "2026-02-28"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "visaflow-db"
+database_id = "YOUR_D1_DATABASE_ID"
+
+[vars]
+NEXT_PUBLIC_APP_URL = "https://visaflow.workers.dev"
