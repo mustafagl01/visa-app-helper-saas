@@ -1,8 +1,6 @@
-// Helper to get D1 binding from Next.js route handlers in Cloudflare Workers
-import { getRequestContext } from '@cloudflare/next-on-pages'
-import { getDb } from './index'
+// Mock DB client - works without any database for preview
+import { mockDb } from './mock'
 
 export function getDatabase() {
-  const { env } = getRequestContext()
-  return getDb(env.DB as D1Database)
+  return mockDb
 }
