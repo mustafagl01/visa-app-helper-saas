@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { LayoutDashboard, FolderOpen, Settings, LogOut } from 'lucide-react'
@@ -16,12 +15,7 @@ export default async function DashboardLayout({
 }) {
   const supabase = await createClient()
   const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) {
-    redirect('/login')
-  }
-
-  const user = session.user
+  const user = session?.user
 
   return (
     <div className="min-h-screen flex bg-gray-50">
@@ -47,21 +41,27 @@ export default async function DashboardLayout({
         </nav>
 
         <div className="p-4 border-t">
-          <div className="px-3 py-2 mb-2">
-            <p className="text-xs font-medium text-gray-900 truncate">
-              {user.user_metadata?.full_name || user.email}
-            </p>
-            <p className="text-xs text-gray-500 truncate">{user.email}</p>
-          </div>
-          <form action="/api/auth/signout" method="post">
-            <button
-              type="submit"
-              className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Çıkış Yap
-            </button>
-          </form>
+          {user ? (
+            <>
+              <div className="px-3 py-2 mb-2">
+                <p className="text-xs font-medium text-gray-900 truncate">
+                  {user.user_metadata?.full_name || user.email}
+                </p>
+                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              </div>
+              <form action="/api/auth/signout" method="post">
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-gray-500 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Çıkış Yap
+                </button>
+              </form>
+            </>
+          ) : (
+            <p className="px-3 py-2 text-xs text-gray-500">Test modu: giriş gerekmiyor</p>
+          )}
         </div>
       </aside>
 

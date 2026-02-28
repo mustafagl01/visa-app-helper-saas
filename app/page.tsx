@@ -40,14 +40,11 @@ export default function LandingPage() {
       <header className="border-b px-6 py-4 flex items-center justify-between max-w-6xl mx-auto">
         <span className="text-xl font-bold text-blue-600">VisaFlow</span>
         <div className="flex gap-3">
-          <Link href="/login" className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900">
-            Giriş Yap
-          </Link>
           <Link
-            href="/register"
+            href="/dashboard"
             className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
-            Ücretsiz Başla
+            Teste Başla
           </Link>
         </div>
       </header>
@@ -67,10 +64,10 @@ export default function LandingPage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
-            href="/register"
+            href="/dashboard"
             className="px-8 py-3 bg-blue-600 text-white text-lg rounded-lg hover:bg-blue-700 font-medium"
           >
-            Şimdi Başla
+            Dashboard'a Git
           </Link>
           <a
             href="#how-it-works"
@@ -133,7 +130,7 @@ export default function LandingPage() {
                   ))}
                 </ul>
                 <Link
-                  href="/register"
+                  href="/dashboard"
                   className={`block text-center py-3 rounded-lg font-medium transition-colors ${
                     plan.highlight
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
