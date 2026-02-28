@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, FileText, MessageCircle, Settings } from 'lucide-react'
+import { Home, FileText, Menu, X } from 'lucide-react'
 
 const navItems = [
   { href: '/dashboard', label: 'Ana Sayfa', icon: Home },
@@ -11,11 +12,38 @@ const navItems = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [pathname])
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      <button
+        type="button"
+        onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+        className="fixed top-4 left-4 z-50 rounded-lg border border-gray-200 bg-white p-2 text-gray-700 shadow-sm lg:hidden"
+        aria-label={isMobileMenuOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+      >
+        {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-label="Menüyü kapat"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 w-64 bg-white border-r border-gray-200 flex flex-col transform transition-transform duration-300 lg:translate-x-0 lg:static lg:z-auto ${
+          isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
         <div className="p-6 border-b border-gray-200">
           <h1 className="text-xl font-bold text-blue-600">✈️ VisaFlow</h1>
           <p className="text-xs text-gray-500 mt-1">AI Vize Asistanı</p>
@@ -57,7 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-auto w-full lg:ml-0 pt-16 lg:pt-0">
         {children}
       </main>
     </div>
