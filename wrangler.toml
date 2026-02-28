@@ -10,5 +10,4 @@ database_name = "visaflow-db"
 database_id = "c9b89b0f-bc5c-42b3-b13a-c94be9e41f32"
 
 [vars]
-GEMINI_API_KEY = "AIzaSyBtRAL0mq56JO2if6PIkgYC7rgiYmXyNHU"
 NEXT_PUBLIC_APP_URL = "https://your-project.pages.dev"

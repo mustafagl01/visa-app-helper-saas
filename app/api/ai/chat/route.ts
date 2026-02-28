@@ -43,6 +43,24 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ message: assistantMessage, visaTypeSet: null })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    const errorMessage = error?.message || 'AI service error'
+    const keyIssueDetected =
+      errorMessage.includes('403') ||
+      errorMessage.toLowerCase().includes('api key') ||
+      errorMessage.toLowerCase().includes('forbidden') ||
+      errorMessage.toLowerCase().includes('leaked')
+
+    if (keyIssueDetected) {
+      return NextResponse.json(
+        {
+          message:
+            'AI servisi şu an yapılandırma hatası nedeniyle yanıt veremiyor. Lütfen yönetici yeni bir GEMINI_API_KEY tanımlayana kadar tekrar deneyin.',
+          visaTypeSet: null,
+        },
+        { status: 200 },
+      )
+    }
+
+    return NextResponse.json({ error: 'AI servisine bağlanırken beklenmeyen bir hata oluştu.' }, { status: 500 })
   }
 }
