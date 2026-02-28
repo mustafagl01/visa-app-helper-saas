@@ -5,11 +5,15 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'VisaFlow — AI Vize Asistanı',
-  description: 'Yapay zeka destekli UK vize başvuru asistanı',
+  title: 'VisaFlow — AI Destekli Vize Başvuru Asistanı',
+  description: 'UK ve Schengen vize başvurularınızı yapay zeka ile kolaylaştırın.',
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="tr">
       <body className={inter.className}>
