@@ -1,29 +1,30 @@
-import { createClient } from '@/lib/supabase/server'
-import { generateLetterPDF } from '@/lib/pdf/generator'
+import { getDatabase } from '@/lib/db/client'
+import { generated_letters } from '@/lib/db/schema'
+import { eq } from 'drizzle-orm'
 import { NextResponse } from 'next/server'
 
-export async function POST(req: Request) {
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export const runtime = 'edge'
 
-  const { caseId, letterType } = await req.json()
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url)
+    const letterId = searchParams.get('id')
+    if (!letterId) return NextResponse.json({ error: 'Letter ID required' }, { status: 400 })
 
-  const { data } = await supabase
-    .from('generated_letters')
-    .select('content')
-    .eq('case_id', caseId)
-    .eq('letter_type', letterType)
-    .single()
+    const db = getDatabase()
+    const result = await db.select().from(generated_letters).where(eq(generated_letters.id, letterId)).limit(1)
+    if (!result[0]) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (!data) return NextResponse.json({ error: 'Letter not found' }, { status: 404 })
+    const content = result[0].content
+    const blob = new TextEncoder().encode(content)
 
-  const pdfBuffer = await generateLetterPDF(data.content, letterType)
-
-  return new Response(pdfBuffer, {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${letterType}.pdf"`
-    }
-  })
+    return new Response(blob, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Disposition': `attachment; filename="visa-letter.txt"`,
+      },
+    })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
 }
