@@ -40,7 +40,17 @@ Record each refusal separately.
 NEVER give legal advice. You are a document preparation assistant, not a lawyer.
 `
 
-export const VISA_ADVISOR_TOOLS: Anthropic.Tool[] = [
+type Tool = {
+  name: string
+  description: string
+  input_schema: {
+    type: "object"
+    properties: Record<string, unknown>
+    required: string[]
+  }
+}
+
+export const VISA_ADVISOR_TOOLS: Tool[] = [
   {
     name: 'update_case_profile',
     description: 'Save collected information to the user\'s case profile',
@@ -80,4 +90,3 @@ export const VISA_ADVISOR_TOOLS: Anthropic.Tool[] = [
   }
 ]
 
-import Anthropic from '@anthropic-ai/sdk'
