@@ -33,7 +33,8 @@ export default function CasePage() {
 
     const userMessage = input.trim()
     setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+    const historyForRequest = [...messages, { role: 'user' as const, content: userMessage }]
+    setMessages(historyForRequest)
     setLoading(true)
 
     try {
@@ -43,18 +44,27 @@ export default function CasePage() {
         body: JSON.stringify({
           caseId,
           message: userMessage,
-          history: messages
+          history: historyForRequest
         })
       })
 
       const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.error || 'AI yanıtı alınamadı.')
+      }
+
       if (data.message) {
         setMessages(prev => [...prev, { role: 'assistant', content: data.message }])
+      } else {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: 'AI yanıt üretmedi. Lütfen tekrar deneyin.'
+        }])
       }
     } catch (error) {
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.'
+        content: error instanceof Error ? error.message : 'Üzgünüm, bir hata oluştu. Lütfen tekrar deneyin.'
       }])
     } finally {
       setLoading(false)
