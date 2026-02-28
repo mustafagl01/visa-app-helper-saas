@@ -1,0 +1,14 @@
+pages_build_output_dir = ".vercel/output/static"
+
+name = "visaflow"
+compatibility_date = "2026-02-28"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "visaflow-db"
+database_id = "c9b89b0f-bc5c-42b3-b13a-c94be9e41f32"
+
+[vars]
+GEMINI_API_KEY = "AIzaSyCPdsQKmW6XBkna5BoKZ52OffQqzq7vyTE"
+NEXT_PUBLIC_APP_URL = "https://your-project.pages.dev"
