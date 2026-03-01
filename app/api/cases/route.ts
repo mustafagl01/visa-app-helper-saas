@@ -1,3 +1,6 @@
+export const runtime = 'edge';
+
+
 import { NextResponse } from 'next/server'
 
 const DEMO_CASES = [

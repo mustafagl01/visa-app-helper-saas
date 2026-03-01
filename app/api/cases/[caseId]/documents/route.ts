@@ -1,3 +1,6 @@
+export const runtime = 'edge';
+
+
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, props: { params: Promise<{ caseId: string }> }) {
