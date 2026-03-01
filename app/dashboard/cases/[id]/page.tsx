@@ -1,3 +1,5 @@
+
+
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
@@ -145,3 +147,4 @@ export default function CasePage() {
     </div>
   )
 }
+export const runtime = 'edge';
